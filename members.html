@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CW案件チェッカー｜Re:works 講座生専用</title>
+    <meta name="description" content="Re:works SNS運用代行スクール講座生専用のCW案件チェッカー。回数無制限で利用可能。">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-inner">
+                <div class="logo">
+                    <span class="logo-icon">🛡️</span>
+                    <div>
+                        <h1 class="logo-title">CW案件チェッカー</h1>
+                        <p class="logo-sub">Re:works 講座生専用</p>
+                    </div>
+                </div>
+                <div class="usage-badge" id="usageBadge" style="border-color:var(--safe);color:var(--safe)">
+                    講座生専用 ∞
+                </div>
+            </div>
+        </header>
+
+        <!-- Hero / Input Section -->
+        <section class="hero">
+            <div class="hero-inner">
+                <h2 class="hero-title">案件URLを貼るだけで<br><span class="gradient-text">怪しさ度を自動判定</span></h2>
+                <p class="hero-desc">過去の詐欺事例データベースとページ分析で、6つの観点から安全度をチェックします</p>
+                <div class="input-box">
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔗</span>
+                        <input type="text" id="urlInput" placeholder="https://crowdworks.jp/public/jobs/... を貼り付け"
+                            autocomplete="off">
+                        <button id="checkBtn" class="check-btn" onclick="startCheck()">
+                            <span class="btn-text">チェック</span>
+                            <span class="btn-loader" style="display:none"></span>
+                        </button>
+                    </div>
+                    <p class="input-hint">※ 案件ページ（/jobs/）またはクライアントページ（/employers/）のURLに対応</p>
+                    <p class="progress-msg" id="progressMsg"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Result Section -->
+        <section class="result-section" id="resultSection" style="display:none">
+            <div class="result-inner">
+                <!-- Overall Score -->
+                <div class="score-card" id="scoreCard">
+                    <div class="score-gauge-wrap">
+                        <svg class="score-gauge" viewBox="0 0 200 200">
+                            <circle class="gauge-bg" cx="100" cy="100" r="85" />
+                            <circle class="gauge-fill" id="gaugeFill" cx="100" cy="100" r="85" stroke-dasharray="534"
+                                stroke-dashoffset="534" />
+                        </svg>
+                        <div class="score-center">
+                            <span class="score-label">怪しさ度</span>
+                            <span class="score-value" id="scoreValue">0</span>
+                            <span class="score-percent">%</span>
+                        </div>
+                    </div>
+                    <div class="score-verdict" id="scoreVerdict">分析中...</div>
+                    <div class="score-comment" id="scoreComment"></div>
+                    <p class="disclaimer-inline">※ 本ツールは案件選びの参考情報であり、安全性を保証するものではありません</p>
+                </div>
+
+                <!-- Category Breakdown -->
+                <div class="categories" id="categoriesGrid"></div>
+
+                <!-- Detected Flags -->
+                <div class="flags-card" id="flagsCard" style="display:none">
+                    <h3 class="flags-title">⚠️ 検出された危険シグナル</h3>
+                    <div class="flags-list" id="flagsList"></div>
+                </div>
+
+                <!-- Known DB Match -->
+                <div class="known-card" id="knownCard" style="display:none">
+                    <div class="known-icon">🚨</div>
+                    <h3 class="known-title">過去の詐欺報告データベースに一致</h3>
+                    <p class="known-desc" id="knownDesc"></p>
+                </div>
+
+                <!-- Progression Warning Checklist -->
+                <div class="progression-card" id="progressionCard" style="display:none"></div>
+            </div>
+        </section>
+
+        <!-- How It Works -->
+        <section class="how-section">
+            <h2 class="section-title">📊 6つの判定基準</h2>
+            <div class="criteria-grid">
+                <div class="criteria-card">
+                    <div class="criteria-icon">👤</div>
+                    <h4>クライアント信頼性</h4>
+                    <p>本人確認・発注ルールチェック・評価件数を分析</p>
+                </div>
+                <div class="criteria-card">
+                    <div class="criteria-icon">📅</div>
+                    <h4>アカウント履歴</h4>
+                    <p>登録日・募集実績・プロジェクト完了率を確認</p>
+                </div>
+                <div class="criteria-card">
+                    <div class="criteria-icon">📝</div>
+                    <h4>案件内容</h4>
+                    <p>業務の具体性・報酬適正・募集人数をチェック</p>
+                </div>
+                <div class="criteria-card">
+                    <div class="criteria-icon">🔍</div>
+                    <h4>危険キーワード</h4>
+                    <p>LINE誘導・スクール勧誘等の危険ワードを検出</p>
+                </div>
+                <div class="criteria-card">
+                    <div class="criteria-icon">📊</div>
+                    <h4>応募状況</h4>
+                    <p>応募数と契約数のバランスから異常を検知</p>
+                </div>
+                <div class="criteria-card">
+                    <div class="criteria-icon">🗃️</div>
+                    <h4>既知DB照合</h4>
+                    <p>過去に報告された詐欺URLと照合</p>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>© 2026 CW案件チェッカー — SNS運用代行スクール Re:works 提供</p>
+            <p class="footer-disclaimer">※
+                本ツールは案件選びの参考としてご利用ください。分析結果はあくまで過去の事例に基づく推定であり、<br>案件の安全性を保証するものではありません。本ツールの利用により生じたいかなる損害についても一切の責任を負いかねます。
+            </p>
+        </footer>
+    </div>
+
+    <script src="scam_database.js"></script>
+    <script>const MEMBER_MODE = true;</script>
+    <script src="analyzer.js"></script>
+</body>
+
+</html>
