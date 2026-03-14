@@ -1,38 +1,109 @@
 // ===== CW案件チェッカー — 分析エンジン v2 =====
 
-// --- 利用回数管理 ---
+// --- 利用回数管理（多重永続化: localStorage + Cookie + IndexedDB） ---
 const STORAGE_KEY = "cw_checker_usage";
+const COOKIE_KEY = "cwc_u";
+const IDB_NAME = "cwCheckerDB";
+const IDB_STORE = "usage";
 const FREE_LIMIT = typeof MEMBER_MODE !== "undefined" && MEMBER_MODE ? Infinity : 5;
 
-function getUsage() {
+// Cookie操作
+function setCookie(name, value, days) {
+    const d = new Date(); d.setTime(d.getTime() + days * 86400000);
+    document.cookie = `${name}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
+}
+function getCookie(name) {
+    const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+    return m ? decodeURIComponent(m[1]) : null;
+}
+
+// IndexedDB操作
+function idbGet() {
+    return new Promise(resolve => {
+        try {
+            const req = indexedDB.open(IDB_NAME, 1);
+            req.onupgradeneeded = e => { e.target.result.createObjectStore(IDB_STORE); };
+            req.onsuccess = e => {
+                try {
+                    const tx = e.target.result.transaction(IDB_STORE, "readonly");
+                    const get = tx.objectStore(IDB_STORE).get("count");
+                    get.onsuccess = () => resolve(get.result || null);
+                    get.onerror = () => resolve(null);
+                } catch (err) { resolve(null); }
+            };
+            req.onerror = () => resolve(null);
+        } catch (err) { resolve(null); }
+    });
+}
+function idbSet(data) {
+    try {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = e => { e.target.result.createObjectStore(IDB_STORE); };
+        req.onsuccess = e => {
+            try {
+                const tx = e.target.result.transaction(IDB_STORE, "readwrite");
+                tx.objectStore(IDB_STORE).put(data, "count");
+            } catch (err) { /* silent */ }
+        };
+    } catch (err) { /* silent */ }
+}
+
+// 3箇所から最大カウントを取得（どれかクリアしても他が残る）
+async function getUsage() {
+    const month = new Date().toISOString().slice(0, 7);
+    let maxCount = 0;
+
+    // localStorage
     try {
         const d = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-        const today = new Date().toISOString().slice(0, 7);
-        if (d.month !== today) return { month: today, count: 0 };
-        return d;
-    } catch { return { month: new Date().toISOString().slice(0, 7), count: 0 }; }
+        if (d.month === month && d.count > 0) maxCount = Math.max(maxCount, d.count);
+    } catch (e) { /* corrupted */ }
+
+    // Cookie
+    try {
+        const c = JSON.parse(getCookie(COOKIE_KEY) || "{}");
+        if (c.month === month && c.count > 0) maxCount = Math.max(maxCount, c.count);
+    } catch (e) { /* corrupted */ }
+
+    // IndexedDB
+    try {
+        const idb = await idbGet();
+        if (idb && idb.month === month && idb.count > 0) maxCount = Math.max(maxCount, idb.count);
+    } catch (e) { /* unavailable */ }
+
+    return { month, count: maxCount };
 }
-function saveUsage(u) { localStorage.setItem(STORAGE_KEY, JSON.stringify(u)); }
-function updateUsageBadge() {
+
+// 3箇所すべてに保存
+function saveUsage(u) {
+    const data = JSON.stringify(u);
+    try { localStorage.setItem(STORAGE_KEY, data); } catch (e) { }
+    try { setCookie(COOKIE_KEY, data, 365); } catch (e) { }
+    try { idbSet(u); } catch (e) { }
+}
+
+async function updateUsageBadge() {
     const badge = document.getElementById("usageBadge");
     if (!badge) return;
     if (FREE_LIMIT === Infinity) { badge.textContent = "講座生専用 ∞"; badge.style.borderColor = "var(--safe)"; return; }
-    const u = getUsage();
+    const u = await getUsage();
     const remain = Math.max(0, FREE_LIMIT - u.count);
-    document.getElementById("remainCount").textContent = remain;
+    const el = document.getElementById("remainCount");
+    if (el) el.textContent = remain;
     if (remain <= 1) badge.style.borderColor = "var(--danger)";
     else if (remain <= 3) badge.style.borderColor = "var(--warn)";
 }
-function checkUsageLimit() {
+
+async function checkUsageLimit() {
     if (FREE_LIMIT === Infinity) return true;
-    const u = getUsage();
+    const u = await getUsage();
     if (u.count >= FREE_LIMIT) {
         document.getElementById("limitPopup").style.display = "flex";
         return false;
     }
     u.count++;
     saveUsage(u);
-    updateUsageBadge();
+    await updateUsageBadge();
     return true;
 }
 function closePopup() { document.getElementById("limitPopup").style.display = "none"; }
@@ -443,7 +514,7 @@ async function startCheck() {
     const input = document.getElementById("urlInput").value;
     const urlInfo = parseUrl(input);
     if (!urlInfo) { alert("CrowdWorksの案件URL（/jobs/...）またはクライアントURL（/employers/...）を入力してください。"); return; }
-    if (!checkUsageLimit()) return;
+    if (!(await checkUsageLimit())) return;
 
     const btn = document.getElementById("checkBtn");
     const btnText = btn.querySelector(".btn-text");
